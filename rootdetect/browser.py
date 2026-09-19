@@ -325,8 +325,11 @@ def prepare_profile_extension(profile: Dict[str, Any], target_dir: Path) -> Path
     with open(ext_dir / "inject.js", "w", encoding="utf-8") as f:
         f.write(full_stealth_code)
 
-    # 5. Copy content.js
+    # 5. Copy content.js and icons
     shutil.copy(EXTENSION_SRC_DIR / "content.js", ext_dir / "content.js")
+    icons_src = EXTENSION_SRC_DIR / "icons"
+    if icons_src.exists():
+        shutil.copytree(icons_src, ext_dir / "icons", dirs_exist_ok=True)
 
     return ext_dir
 

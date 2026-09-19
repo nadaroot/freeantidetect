@@ -493,6 +493,27 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
         try:
             subprocess.run(["chmod", "-R", "+x", str(target_folder.resolve())], check=False)
             subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(target_folder.resolve())], check=False)
+            
+            # Inject custom Root Detect icons & Info.plist branding
+            icns_src = Path(__file__).parent / "assets" / "app.icns"
+            if icns_src.exists():
+                for icns in target_folder.glob("**/*.icns"):
+                    try:
+                        shutil.copy(icns_src, icns)
+                    except Exception:
+                        pass
+            
+            import plistlib
+            for plist_file in target_folder.glob("**/Contents/Info.plist"):
+                try:
+                    with open(plist_file, "rb") as f:
+                        pl = plistlib.load(f)
+                    pl["CFBundleDisplayName"] = "Root Detect"
+                    pl["CFBundleName"] = "Root Detect"
+                    with open(plist_file, "wb") as f:
+                        plistlib.dump(pl, f)
+                except Exception:
+                    pass
         except Exception:
             pass
 

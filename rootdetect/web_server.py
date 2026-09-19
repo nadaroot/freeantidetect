@@ -26,6 +26,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Root Detect · Dashboard</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <style>
         :root {
             --bg: #09090b;
@@ -68,7 +69,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         .logo-group {
             display: flex;
-            align-items: baseline;
+            align-items: center;
             gap: 12px;
         }
         .logo {
@@ -412,8 +413,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
     <header>
         <div class="logo-group">
-            <div class="logo">root-detect</div>
-            <span class="tag">standalone antidetect</span>
+            <img src="/logo.png" alt="Logo" style="width: 26px; height: 26px; border-radius: 6px; box-shadow: 0 0 10px rgba(34, 197, 94, 0.25);">
+            <div class="logo">Root Detect</div>
+            <span class="tag">AntiDetect Browser</span>
         </div>
         <div class="actions-group">
             <button class="btn" onclick="openBrowsersModal()">Браузеры</button>
@@ -843,6 +845,19 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         if path == '/' or path == '/index.html':
             self._send_html(HTML_TEMPLATE)
             return
+
+        if path in ['/logo.png', '/favicon.png', '/favicon.ico']:
+            asset_file = Path(__file__).parent / "assets" / "logo.png"
+            if asset_file.exists():
+                with open(asset_file, "rb") as f:
+                    img_data = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'image/png')
+                self.send_header('Content-Length', str(len(img_data)))
+                self.send_header('Cache-Control', 'public, max-age=86400')
+                self.end_headers()
+                self.wfile.write(img_data)
+                return
 
         if path == '/api/profiles':
             mgr = ProfileManager()
