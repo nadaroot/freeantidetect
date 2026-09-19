@@ -1,101 +1,116 @@
 # FreeAntidetect (Root Detect)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-%3E%3D3.8-blue.svg)](https://python.org/)
-[![Platform: Cross-Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-brightgreen.svg)]()
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/nadaroot/freeantidetect)
+<p align="center">
+  <img src="rootdetect/assets/logo.png" alt="Root Detect Logo" width="120" height="120" style="border-radius: 20px; box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);">
+  <br>
+  <b>Автономный локальный антидетект-браузер с современным Web Dashboard и CLI интерфейсом</b>
+  <br>
+  <i>100% бесплатно, без подписок, без облачных баз данных и без ограничений по профилям</i>
+</p>
 
-Автономный консольный антидетект-браузер (CLI & TUI) для изолированного управления профилями, прокси, фингерпринтами и автоматической загрузкой браузеров без облачных серверов, баз данных и подписок.
+<p align="center">
+  <a href="https://github.com/nadaroot/freeantidetect/releases/latest"><img src="https://img.shields.io/github/v/release/nadaroot/freeantidetect?style=flat-square&color=22c55e&label=Latest%20Release" alt="Latest Release"></a>
+  <a href="https://github.com/nadaroot/freeantidetect/releases"><img src="https://img.shields.io/github/downloads/nadaroot/freeantidetect/total?style=flat-square&color=blue&label=Downloads" alt="Downloads"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen.svg?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/Python-3.8%2B-blue.svg?style=flat-square" alt="Python Version">
+</p>
 
 ---
 
-## Особенности
+## 📥 Скачать готовые сборки (Releases)
 
-* **Минималистичный консольный TUI**: Управление всеми профилями, прокси и настройками прямо в терминале через аккуратное текстовое меню.
-* **Два браузерных движка (Chromium & Gecko)**:
+Вы можете скачать уже скомпилированные готовые исполняемые файлы в один клик без установки Python:
+
+👉 **[Перейти ко всем релизам (GitHub Releases)](https://github.com/nadaroot/freeantidetect/releases)**
+
+| Платформа | Рекомендуемая версия (Web Dashboard) | Консольная версия (CLI / TUI) |
+| :--- | :--- | :--- |
+| 🪟 **Windows** (x64) | [**`RootDetect-Web.exe`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web.exe) | [**`RootDetect-CLI.exe`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI.exe) |
+| 🍏 **macOS** (Apple Silicon M1-M4) | [**`RootDetect-Web-macos-arm64.zip`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web-macos-arm64.zip) | [**`RootDetect-CLI-macos-arm64.zip`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI-macos-arm64.zip) |
+| 🍏 **macOS** (Intel x86_64) | [**`RootDetect-Web-macos-x64.zip`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web-macos-x64.zip) | [**`RootDetect-CLI-macos-x64.zip`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI-macos-x64.zip) |
+| 🐧 **Linux** (x86_64) | [**`RootDetect-Web-linux-x64.tar.gz`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web-linux-x64.tar.gz) | [**`RootDetect-CLI-linux-x64.tar.gz`**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI-linux-x64.tar.gz) |
+
+---
+
+## ✨ Ключевые возможности
+
+* 🌐 **Два режима интерфейса**:
+  * **Web Dashboard**: Современный, темный минималистичный веб-интерфейс (`http://127.0.0.1:5050`) для комфортного создания, настройки и запуска профилей.
+  * **Interactive TUI**: Быстрое консольное меню для работы через SSH или терминал.
+* 🛡️ **Два браузерных движка (Chromium & Gecko)**:
   * Поддержка **Google Chrome, Brave, Ungoogled Chromium, Thorium, Mozilla Firefox, LibreWolf**.
-  * Автоматический поиск установленных браузеров в системе (macOS, Windows, Linux).
-* **Встроенный загрузчик portable браузеров**:
-  * Скачивание и распаковка официальных чистых сборок браузеров в 1 клик прямо из меню (Google Chrome for Testing, Ungoogled, Brave, Thorium, Firefox, LibreWolf).
-* **Эмуляция любых ОС и устройств**:
+  * Автоматический поиск установленных в системе браузеров (Windows, macOS, Linux).
+* 📦 **Встроенный загрузчик чистых portable браузеров**:
+  * Загрузка и распаковка официальных изолированных версий (Google Chrome for Testing, Ungoogled, Brave, Thorium, Firefox, LibreWolf) прямо из интерфейса.
+  * Полное отключение телеметрии, уведомлений о тестировании и всплывающих окон восстановления сессий.
+* 📱 **Эмуляция любых ОС и мобильных устройств**:
   * **Windows**: 11, 10, 8.1, 7.
   * **macOS**: 15 (Sequoia), 14 (Sonoma), 13 (Ventura).
-  * **iOS**: iPhone 16 Pro, iPhone 15 Pro Max, iPad Pro 12.9 (с сенсорным вводом `maxTouchPoints = 5`, Retina масштабированием и Apple GPU).
-  * **Android**: Samsung Galaxy S24 Ultra, Google Pixel 8 Pro, Xiaomi 14 Pro (с Snapdragon 8 Gen 3, Adreno 750 / Mali G715 и Touch эмуляцией).
-  * **Linux**: Ubuntu / Debian x86_64.
-* **Глубокая подмена фингерпринтов (Stealth Engine)**:
-  * Скрытие следов автоматизации (`navigator.webdriver = false`).
-  * Эмуляция видеокарт WebGL (Apple Silicon M1/M2/M3, Apple GPU, NVIDIA RTX 4080/4090, AMD Radeon, Intel Iris, Qualcomm Adreno, ARM Mali).
-  * Уникальный детерминированный микро-шум для Canvas и AudioContext под каждый профиль.
-  * Тонкая настройка: ядер CPU (`hardwareConcurrency`), RAM (`deviceMemory`), разрешения экрана, локали и User-Agent.
-  * Защита от утечки реального IP через WebRTC (`disable_non_proxied_udp` / `media.peerconnection.enabled = false`).
-* **Поддержка прокси**:
-  * Протоколы: HTTP, HTTPS, SOCKS4, SOCKS5.
-  * Форматы: `ip:port`, `ip:port:user:pass`, `protocol://user:pass@ip:port`.
-  * Автоматическая авторизация прокси на лету.
-  * Встроенный чекер доступности, внешнего IP, страны и задержки (пинг).
-* **100% Автономность**:
-  * Работает полностью локально и оффлайн.
-  * Запуск в 1 команду: `antidetect`.
-  * Возможность сборки в единый автономный исполняемый файл (`antidetect.exe` / бинарник).
+  * **iOS**: iPhone 16 Pro, iPhone 15 Pro Max, iPad Pro 12.9 (Touch эмуляция `maxTouchPoints = 5`, Retina DPR, Apple GPU).
+  * **Android**: Samsung Galaxy S24 Ultra, Google Pixel 8 Pro, Xiaomi 14 Pro (Snapdragon 8 Gen 3, Adreno 750 / Mali G715, Touch).
+  * **Linux**: Ubuntu / Debian Desktop.
+* 🎭 **Глубокая маскировка фингерпринтов (Stealth Engine)**:
+  * Полное скрытие автоматизации (`navigator.webdriver = false`).
+  * Спуфинг видеокарт WebGL (Apple Silicon M-серии, NVIDIA RTX 4080/4090, AMD Radeon, Intel Iris, Adreno, Mali).
+  * Детерминированный Canvas и AudioContext шум под каждый профиль.
+  * Тонкая настройка: количество ядер CPU (`hardwareConcurrency`), RAM (`deviceMemory`), разрешение экрана, User-Agent, языки и геолокация.
+  * Защита от WebRTC IP Leak.
+* 🔌 **Поддержка прокси**:
+  * HTTP, HTTPS, SOCKS4, SOCKS5 с авторизацией (`user:pass`).
+  * Встроенный чекер доступности, внешнего IP, страны и пинга.
+* 🔒 **100% Автономность**:
+  * Все профили хранятся строго локально на вашем компьютере.
+  * Никаких внешних серверов, телеметрии или платных подписок.
 
 ---
 
-## Быстрый старт
+## 🚀 Запуск из исходного кода (Python)
 
-### Способ 1: Установка как консольной команды (Рекомендуется)
+Если вы хотите запустить проект напрямую из исходников:
 
-1. Клонируйте репозиторий:
+### 1. Клонирование репозитория
 ```bash
 git clone https://github.com/nadaroot/freeantidetect.git
 cd freeantidetect
 ```
 
-2. Установите пакет в систему:
-```bash
-pip install -e .
-```
-
-3. Запустите в терминале:
-```bash
-antidetect
-```
-
----
-
-### Способ 2: Прямой запуск без установки
-
+### 2. Установка зависимостей
 ```bash
 pip install -r requirements.txt
+```
+
+### 3. Запуск веб-интерфейса (Web Dashboard)
+```bash
+python3 web_app.py
+```
+> Браузер откроет интерфейс по адресу: **`http://127.0.0.1:5050`**
+
+### 4. Запуск консольного интерфейса (CLI)
+```bash
 python3 antidetect.py
 ```
 
 ---
 
-## Сборка в один файл (.exe / binary)
+## 🛠️ Сборка в один файл (.exe / binary)
 
-Для создания полностью автономного файла без необходимости устанавливать Python:
+Для самостоятельной сборки бинарных файлов на вашей системе используется скрипт `build_standalone.py`:
 
 ```bash
-python3 build_standalone.py
+# Собрать веб-версию (RootDetect-Web)
+python3 build_standalone.py --target web
+
+# Собрать консольную версию (RootDetect-CLI)
+python3 build_standalone.py --target cli
+
+# Собрать обе версии
+python3 build_standalone.py --target all
 ```
-Готовый файл будет скомпилирован в папку `dist/antidetect` (или `dist/antidetect.exe` на Windows).
+Скомпилированные файлы появятся в директории `dist/`.
 
 ---
 
-## Использование
+## 📄 Лицензия
 
-После запуска команды `antidetect` откроется интерактивное меню:
-
-1. **Запустить профиль**: Выберите профиль — мгновенно откроется окно браузера с изолированными куками, прокси и подмененными отпечатками.
-2. **Создать профиль**: Быстрое создание профиля в 1 клик или детальный режим с ручным выбором ОС (Win/Mac/iOS/Android), GPU, CPU, RAM и разрешения.
-3. **Редактировать**: Изменение имени, прокси или заметок.
-4. **Проверить прокси**: Тестирование скорости отклика, страны и реального IP выбранного профиля.
-5. **Удалить профиль**: Полная очистка данных и сессий профиля.
-6. **Браузеры в системе**: Просмотр установленных браузеров и скачивание portable версий в 1 клик (Chrome, Ungoogled, Brave, Thorium, Firefox, LibreWolf).
-
----
-
-## Лицензия
-
-Распространяется под лицензией [MIT](./LICENSE).
+Проект распространяется под свободной лицензией [MIT](./LICENSE).

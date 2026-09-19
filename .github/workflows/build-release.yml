@@ -1,4 +1,4 @@
-name: Build and Release Windows Executables
+name: Build and Release Multi-Platform Binaries
 
 on:
   push:
@@ -9,17 +9,33 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v1.0.0)'
+        description: 'Release Tag (e.g. v1.0.1)'
         required: false
-        default: 'v1.0.0'
+        default: 'v1.0.1'
 
 permissions:
   contents: write
 
 jobs:
-  build-windows:
-    name: Build Windows Executables (.exe)
-    runs-on: windows-latest
+  build:
+    name: Build (${{ matrix.os_label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            os_label: Windows (x64)
+            platform: windows
+          - os: macos-latest
+            os_label: macOS Apple Silicon (arm64)
+            platform: macos-arm64
+          - os: macos-13
+            os_label: macOS Intel (x64)
+            platform: macos-x64
+          - os: ubuntu-22.04
+            os_label: Linux (x64)
+            platform: linux-x64
 
     steps:
       - name: Checkout repository
@@ -36,52 +52,104 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller rich
 
-      - name: Build RootDetect-Web and RootDetect-CLI
+      - name: Build RootDetect Binaries (Web & CLI)
         run: |
           python build_standalone.py --target all
 
-      - name: Verify Executables
+      - name: Package Windows Artifacts
+        if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          if (!(Test-Path "dist\RootDetect-Web.exe")) {
-            Write-Error "RootDetect-Web.exe was not created!"
-            exit 1
-          }
-          if (!(Test-Path "dist\RootDetect-CLI.exe")) {
-            Write-Error "RootDetect-CLI.exe was not created!"
-            exit 1
-          }
-          Get-ChildItem -Path dist\
+          New-Item -ItemType Directory -Force -Path artifacts
+          Copy-Item dist\RootDetect-Web.exe artifacts\RootDetect-Web.exe
+          Copy-Item dist\RootDetect-Web.exe artifacts\RootDetect-Web-Windows-x64.exe
+          Copy-Item dist\RootDetect-CLI.exe artifacts\RootDetect-CLI.exe
+          Copy-Item dist\RootDetect-CLI.exe artifacts\RootDetect-CLI-Windows-x64.exe
+          Get-ChildItem artifacts
 
-      - name: Upload Build Artifacts
+      - name: Package macOS Artifacts
+        if: startsWith(matrix.platform, 'macos')
+        run: |
+          mkdir -p artifacts
+          chmod +x dist/RootDetect-Web dist/RootDetect-CLI
+          cd dist
+          zip -9 ../artifacts/RootDetect-Web-${{ matrix.platform }}.zip RootDetect-Web
+          zip -9 ../artifacts/RootDetect-CLI-${{ matrix.platform }}.zip RootDetect-CLI
+          cd ..
+          ls -la artifacts/
+
+      - name: Package Linux Artifacts
+        if: matrix.platform == 'linux-x64'
+        run: |
+          mkdir -p artifacts
+          chmod +x dist/RootDetect-Web dist/RootDetect-CLI
+          tar -czvf artifacts/RootDetect-Web-linux-x64.tar.gz -C dist RootDetect-Web
+          tar -czvf artifacts/RootDetect-CLI-linux-x64.tar.gz -C dist RootDetect-CLI
+          ls -la artifacts/
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: RootDetect-Windows-Executables
-          path: dist/*.exe
+          name: binaries-${{ matrix.platform }}
+          path: artifacts/*
           retention-days: 14
 
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_download
+
+      - name: Flatten and list release assets
+        run: |
+          mkdir -p release_assets
+          find release_download -type f -exec cp {} release_assets/ \;
+          ls -la release_assets/
+
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           name: Root Detect Release ${{ github.event.inputs.tag_name || github.ref_name }}
           body: |
-            ### 🚀 Root Detect — Автономный антидетект-браузер
+            ### 🚀 Root Detect — Multi-Platform Release
 
-            **Что нового в этом релизе:**
-            - 🌐 **RootDetect-Web.exe** — Запуск локального графического веб-интерфейса (Dashboard) в один клик.
-            - 💻 **RootDetect-CLI.exe** — Терминальная версия (TUI) с поддержкой всех команд.
-            - 🛡️ Чистый Chromium & Gecko движки без предупреждений тестирования и баннеров.
-            - 🎭 Встроенные пресеты отпечатков (Windows, macOS Sonoma/Sequoia, iOS 18 Safari, Android S24/Pixel 8, Linux).
-            - ⚡ Автономность: нулевые внешние зависимости, локальное хранилище профилей.
+            **Root Detect** — локальный автономный антидетект-браузер с веб-дашбордом и консольным TUI.
 
-            #### 📥 Скачать для Windows:
-            - **`RootDetect-Web.exe`** (Рекомендуется для большинства пользователей)
-            - **`RootDetect-CLI.exe`** (Для любителей консоли)
-          files: |
-            dist/RootDetect-Web.exe
-            dist/RootDetect-CLI.exe
+            ---
+
+            ### 📦 Загрузка сборок (Downloads):
+
+            #### 🪟 Windows:
+            - **[`RootDetect-Web.exe`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web.exe)** — Веб-интерфейс в 1 клик (Рекомендуется)
+            - **[`RootDetect-CLI.exe`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI.exe)** — Консольная версия (TUI)
+
+            #### 🍏 macOS:
+            - **Apple Silicon (M1/M2/M3/M4):**
+              - [`RootDetect-Web-macos-arm64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-macos-arm64.zip)
+              - [`RootDetect-CLI-macos-arm64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-macos-arm64.zip)
+            - **Intel (x86_64):**
+              - [`RootDetect-Web-macos-x64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-macos-x64.zip)
+              - [`RootDetect-CLI-macos-x64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-macos-x64.zip)
+
+            #### 🐧 Linux:
+            - [`RootDetect-Web-linux-x64.tar.gz`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-linux-x64.tar.gz)
+            - [`RootDetect-CLI-linux-x64.tar.gz`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-linux-x64.tar.gz)
+
+            ---
+
+            ### ✨ Основные возможности:
+            - 🌐 **Web Dashboard & TUI**: Управление профилями через современный веб-интерфейс (`127.0.0.1:5050`) или консоль.
+            - 🛡️ **Движки Chromium & Gecko**: Чистые сборки без предупреждений тестирования и баннеров.
+            - 🎭 **Спуфинг мобильных и ПК систем**: Windows 11/10, macOS Sequoia/Sonoma, iOS 18 Safari (iPhone/iPad), Android (Galaxy S24, Pixel 8), Linux.
+            - 🔒 **Полная автономность**: Без облаков, без подписок, локальное хранение данных.
+          files: release_assets/*
           draft: false
           prerelease: false
         env:
