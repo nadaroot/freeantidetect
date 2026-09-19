@@ -2,6 +2,7 @@
 """
 Root Detect - Web Interface Runner
 Standalone launcher that boots the local dashboard and opens the UI in your browser.
+Supports background GUI mode (noconsole) on Windows.
 """
 
 import sys
@@ -10,6 +11,12 @@ import time
 import subprocess
 import webbrowser
 from pathlib import Path
+
+# Safe stdout/stderr redirection for GUI/noconsole mode on Windows
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8', errors='replace')
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w', encoding='utf-8', errors='replace')
 
 # Ensure root directory is in sys.path
 BASE_DIR = Path(__file__).parent.resolve()
@@ -22,9 +29,9 @@ if sys.platform == "win32":
         import ctypes
         kernel32 = ctypes.windll.kernel32
         kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
-        if hasattr(sys.stdout, 'reconfigure'):
+        if hasattr(sys.stdout, 'reconfigure') and sys.stdout is not None:
             sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-        if hasattr(sys.stderr, 'reconfigure'):
+        if hasattr(sys.stderr, 'reconfigure') and sys.stderr is not None:
             sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
         pass
@@ -41,21 +48,13 @@ def main():
             except ValueError:
                 pass
 
-    print("=" * 60)
-    print("           ROOT DETECT · WEB DASHBOARD")
-    print("       Локальный автономный антидетект-браузер")
-    print("=" * 60)
-
     try:
         server = start_web_server(port)
         actual_port = server.server_port
     except Exception as e:
-        print(f"[!] Ошибка запуска веб-сервера: {e}")
         sys.exit(1)
 
     url = f"http://127.0.0.1:{actual_port}"
-    print(f"\n[+] Веб-сервер запущен: {url}")
-    print("[*] Открытие интерфейса...")
 
     # Try launching in App Window mode for native look & feel
     browsers = find_installed_browsers()
@@ -78,20 +77,14 @@ def main():
     if not app_launched:
         webbrowser.open(url)
 
-    print("\n[+] Интерфейс открыт в браузере.")
-    print("[i] Для завершения работы нажмите Ctrl + C в этом окне.")
-    print("-" * 60)
-
     try:
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n\n[*] Остановка сервера...")
+    except (KeyboardInterrupt, SystemExit):
         try:
             server.shutdown()
         except Exception:
             pass
-        print("[+] Работа Root Detect завершена.")
         sys.exit(0)
 
 if __name__ == "__main__":

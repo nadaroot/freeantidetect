@@ -41,9 +41,11 @@ def build_binary(target: str = "web"):
     if target == "web":
         entry_point = base_dir / "web_app.py"
         bin_name = "RootDetect-Web"
+        window_flag = "--noconsole"
     elif target == "cli":
         entry_point = base_dir / "antidetect.py"
         bin_name = "RootDetect-CLI"
+        window_flag = "--console"
     else:
         raise ValueError(f"Unknown target: {target}")
 
@@ -63,6 +65,7 @@ def build_binary(target: str = "web"):
         "PyInstaller",
         f"--name={bin_name}",
         "--onefile",
+        window_flag,
         "--clean",
         f"--add-data={add_data_ext}",
         f"--add-data={add_data_assets}",

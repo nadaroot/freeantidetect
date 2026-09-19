@@ -484,11 +484,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <label class="form-label">Операционная система и устройство</label>
                 <!-- Category Tabs -->
                 <div class="category-tabs" id="cat-tabs">
-                    <div class="cat-tab active" onclick="switchCategory('windows')">Windows</div>
-                    <div class="cat-tab" onclick="switchCategory('macos')">macOS</div>
-                    <div class="cat-tab" onclick="switchCategory('ios')">iOS (Apple)</div>
-                    <div class="cat-tab" onclick="switchCategory('android')">Android</div>
-                    <div class="cat-tab" onclick="switchCategory('linux')">Linux</div>
+                    <div class="cat-tab active" onclick="switchCategory('windows', this)">Windows</div>
+                    <div class="cat-tab" onclick="switchCategory('macos', this)">macOS</div>
+                    <div class="cat-tab" onclick="switchCategory('ios', this)">iOS (Apple)</div>
+                    <div class="cat-tab" onclick="switchCategory('android', this)">Android</div>
+                    <div class="cat-tab" onclick="switchCategory('linux', this)">Linux</div>
                 </div>
 
                 <!-- Sub-Device Grid -->
@@ -592,10 +592,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             ]
         };
 
-        function switchCategory(cat) {
+        function switchCategory(cat, el) {
             currentCategory = cat;
             document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            if (el) {
+                el.classList.add('active');
+            } else {
+                const tabs = document.querySelectorAll('.cat-tab');
+                tabs.forEach(t => {
+                    if (t.innerText.toLowerCase().includes(cat.toLowerCase())) {
+                        t.classList.add('active');
+                    }
+                });
+            }
             
             // Auto select first device in category
             const devices = deviceCatalog[cat] || [];
@@ -778,34 +787,58 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         async function loadAvailableBrowsers() {
             const container = document.getElementById('browsers-download-list');
-            container.innerHTML = '<div style="color: var(--muted);">Загрузка...</div>';
+            container.innerHTML = '<div style="color: var(--muted); padding: 12px 0;">Загрузка списка браузеров...</div>';
             
-            const res = await fetch('/api/browsers');
-            const data = await res.json();
-            
-            container.innerHTML = data.available.map(b => `
-                <div style="display: flex; justify-content: space-between; align-items: center; background: #18181b; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border);">
-                    <div>
-                        <div style="font-weight: 600; font-size: 13px;">${b.name}</div>
-                        <div style="font-size: 11px; color: var(--muted);">${b.desc}</div>
+            try {
+                const res = await fetch('/api/browsers');
+                const data = await res.json();
+                
+                if (!data.available || data.available.length === 0) {
+                    container.innerHTML = '<div style="color: var(--muted);">Нет доступных браузеров</div>';
+                    return;
+                }
+
+                container.innerHTML = data.available.map(b => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #18181b; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border);">
+                        <div>
+                            <div style="font-weight: 600; font-size: 13px;">${b.name}</div>
+                            <div style="font-size: 11px; color: var(--muted);">${b.desc}</div>
+                        </div>
+                        <button class="btn btn-sm" onclick="downloadBrowserItem('${b.id}', '${b.name}', this)">Скачать</button>
                     </div>
-                    <button class="btn btn-sm" onclick="downloadBrowserItem('${b.id}', '${b.name}')">Скачать</button>
-                </div>
-            `).join('');
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<div style="color: var(--danger);">Ошибка загрузки: ${err.message}</div>`;
+            }
         }
 
-        async function downloadBrowserItem(id, name) {
-            showToast(`Загрузка ${name}... Пожалуйста, подождите`);
-            const res = await fetch('/api/browsers/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ browser_id: id })
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast(`${name} успешно установлен!`);
-            } else {
-                alert('Ошибка скачивания браузера: ' + data.message);
+        async function downloadBrowserItem(id, name, btn) {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Загрузка...';
+            }
+            showToast(`Загрузка ${name}... Пожалуйста, подождите 30-60 сек`);
+            try {
+                const res = await fetch('/api/browsers/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ browser_id: id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`${name} успешно установлен!`);
+                    loadAvailableBrowsers();
+                    loadProfiles();
+                } else {
+                    alert('Ошибка скачивания браузера: ' + (data.message || 'Не удалось скачать'));
+                }
+            } catch (err) {
+                alert('Ошибка сети при скачивании браузера: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Скачать';
+                }
             }
         }
 

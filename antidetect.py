@@ -34,4 +34,13 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\nВыход...")
         sys.exit(0)
-
+    except Exception as e:
+        import traceback
+        print(f"\n[!] Ошибка запуска программы: {e}")
+        traceback.print_exc()
+        if sys.platform == "win32":
+            try:
+                input("\nНажмите Enter для выхода...")
+            except Exception:
+                pass
+        sys.exit(1)

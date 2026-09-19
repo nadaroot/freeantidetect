@@ -29,37 +29,13 @@ AVAILABLE_BROWSERS = [
         "id": "chrome_cft",
         "name": "Google Chrome (Testing)",
         "engine": "chromium",
-        "desc": "Официальный чистый билд от Google без привязки к аккаунту"
+        "desc": "Официальный чистый портативный билд от Google без привязки к аккаунту"
     },
     {
         "id": "ungoogled",
         "name": "Ungoogled Chromium",
         "engine": "chromium",
-        "desc": "Максимальная приватность: вырезаны все фоновые сервисы и телеметрия Google"
-    },
-    {
-        "id": "brave",
-        "name": "Brave Browser",
-        "engine": "chromium",
-        "desc": "Встроенная защита от фингерпринтинга и блокировщик трекеров"
-    },
-    {
-        "id": "thorium",
-        "name": "Thorium Browser",
-        "engine": "chromium",
-        "desc": "Сверхбыстрый оптимизированный форк Chromium (AVX2/NEON)"
-    },
-    {
-        "id": "firefox",
-        "name": "Mozilla Firefox",
-        "engine": "gecko",
-        "desc": "Официальный движок Gecko с поддержкой профилей и расширений"
-    },
-    {
-        "id": "librewolf",
-        "name": "LibreWolf (Firefox Privacy)",
-        "engine": "gecko",
-        "desc": "Приватный форк Firefox с встроенным отключением телеметрии и WebRTC leak shield"
+        "desc": "Максимальная приватность: вырезаны фоновые сервисы и телеметрия Google"
     }
 ]
 
@@ -377,11 +353,15 @@ def _locate_binary_in_folder(folder: Path) -> Optional[Path]:
             if raws and os.access(raws[0], os.X_OK):
                 return raws[0]
 
-    elif "windows" in system:
-        for name in ["chrome.exe", "brave.exe", "thorium.exe", "chromium.exe", "firefox.exe", "librewolf.exe"]:
-            cands = list(folder.glob(f"**/{name}"))
-            if cands:
-                return cands[0]
+    elif "windows" in system or sys.platform == "win32":
+        preferred = ["chrome.exe", "chromium.exe", "brave.exe", "thorium.exe", "firefox.exe", "librewolf.exe"]
+        for p in preferred:
+            for cand in folder.rglob("*.exe"):
+                if cand.is_file() and cand.name.lower() == p:
+                    return cand
+        for cand in folder.rglob("*.exe"):
+            if cand.is_file() and not cand.name.lower().startswith(("setup", "install", "update", "crash", "notification", "elevation")):
+                return cand
     else: # Linux
         for cand in folder.glob("**/*"):
             if cand.is_file() and os.access(cand, os.X_OK) and not cand.name.endswith(('.so', '.json', '.pak', '.bin')):
