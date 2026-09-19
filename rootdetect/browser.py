@@ -182,15 +182,21 @@ def prepare_profile_extension(profile: Dict[str, Any], target_dir: Path) -> Path
     """
     Creates a customized unpacked Chrome extension in target_dir for this specific profile.
     Generates tailored config.json, rules.json (declarativeNetRequest), content.js, and inject.js.
+    Uses /tmp on macOS to avoid macOS TCC Documents folder sandbox read restrictions.
     """
-    ext_dir = target_dir / "extension"
-    if ext_dir.exists():
-        shutil.rmtree(ext_dir, ignore_errors=True)
-    ext_dir.mkdir(parents=True, exist_ok=True)
+    p_id = profile.get("id", "default")
+    if sys.platform == "darwin":
+        runtime_ext_dir = Path("/tmp") / f"rootdetect_ext_{p_id}"
+    else:
+        runtime_ext_dir = target_dir / "extension"
+    runtime_ext_dir.mkdir(parents=True, exist_ok=True)
+
+    local_ext_dir = target_dir / "extension"
+    local_ext_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Copy manifest.json & background.js
-    shutil.copy(EXTENSION_SRC_DIR / "manifest.json", ext_dir / "manifest.json")
-    shutil.copy(EXTENSION_SRC_DIR / "background.js", ext_dir / "background.js")
+    shutil.copy(EXTENSION_SRC_DIR / "manifest.json", runtime_ext_dir / "manifest.json")
+    shutil.copy(EXTENSION_SRC_DIR / "background.js", runtime_ext_dir / "background.js")
 
     from rootdetect.fingerprints import sanitize_fingerprint
     fp = sanitize_fingerprint(profile.get("fingerprint", {}))
@@ -259,7 +265,7 @@ def prepare_profile_extension(profile: Dict[str, Any], target_dir: Path) -> Path
         } if proxy_info and proxy_info.get("username") else None
     }
 
-    with open(ext_dir / "config.json", "w", encoding="utf-8") as f:
+    with open(runtime_ext_dir / "config.json", "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2, ensure_ascii=False)
 
     # 3. Create declarativeNetRequest rules.json for network header spoofing
@@ -307,7 +313,7 @@ def prepare_profile_extension(profile: Dict[str, Any], target_dir: Path) -> Path
         }
     ]
 
-    with open(ext_dir / "rules.json", "w", encoding="utf-8") as f:
+    with open(runtime_ext_dir / "rules.json", "w", encoding="utf-8") as f:
         json.dump(rules, f, indent=2)
 
     # 4. Create customized inject.js with config baked in
@@ -322,16 +328,30 @@ def prepare_profile_extension(profile: Dict[str, Any], target_dir: Path) -> Path
         inject_base,
         count=1
     )
-    with open(ext_dir / "inject.js", "w", encoding="utf-8") as f:
+    with open(runtime_ext_dir / "inject.js", "w", encoding="utf-8") as f:
         f.write(full_stealth_code)
 
     # 5. Copy content.js and icons
-    shutil.copy(EXTENSION_SRC_DIR / "content.js", ext_dir / "content.js")
+    shutil.copy(EXTENSION_SRC_DIR / "content.js", runtime_ext_dir / "content.js")
     icons_src = EXTENSION_SRC_DIR / "icons"
     if icons_src.exists():
-        shutil.copytree(icons_src, ext_dir / "icons", dirs_exist_ok=True)
+        shutil.copytree(icons_src, runtime_ext_dir / "icons", dirs_exist_ok=True)
 
-    return ext_dir
+    # Sync to local folder as well
+    if runtime_ext_dir != local_ext_dir:
+        shutil.copytree(runtime_ext_dir, local_ext_dir, dirs_exist_ok=True)
+
+    try:
+        for ext_d in [runtime_ext_dir, local_ext_dir]:
+            for root, dirs, files in os.walk(str(ext_d)):
+                for d in dirs:
+                    os.chmod(os.path.join(root, d), 0o755)
+                for f in files:
+                    os.chmod(os.path.join(root, f), 0o644)
+    except Exception:
+        pass
+
+    return runtime_ext_dir
 
 
 
@@ -350,6 +370,21 @@ def launch_browser(
 
     user_data_path = Path(profile["user_data_path"])
     user_data_path.mkdir(parents=True, exist_ok=True)
+    
+    # Clean up stale Chromium singleton locks and invalid Secure Preferences to prevent corruption alerts
+    for s_file in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
+        try:
+            (user_data_path / s_file).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    sec_prefs = user_data_path / "Default" / "Secure Preferences"
+    if sec_prefs.exists():
+        try:
+            sec_prefs.unlink(missing_ok=True)
+        except Exception:
+            pass
+
     fp = profile.get("fingerprint", {})
     proxy = profile.get("proxy")
     is_mobile = bool(fp.get("is_mobile", False))
@@ -378,9 +413,15 @@ def launch_browser(
             f"--disable-extensions-except={str(ext_dir.resolve())}",
             f"--load-extension={str(ext_dir.resolve())}",
             "--disable-blink-features=AutomationControlled",
+            "--disable-infobars",
+            "--test-type",
+            "--hide-crash-restore-bubble",
+            "--disable-session-crashed-bubble",
+            "--disable-features=Translate,ChromeForTestingAlert,OSCryptAsync",
             "--no-first-run",
             "--no-default-browser-check",
             "--password-store=basic",
+            "--use-mock-keychain",
             "--disable-background-networking",
             "--disable-default-apps",
             "--disable-component-update",
@@ -439,8 +480,6 @@ def launch_browser(
                 close_fds=True
             )
         elif platform.system().lower() == "darwin":
-            # On macOS, use 'open -n -a <AppBundle> --args <flags>' to guarantee an isolated instance
-            # and prevent macOS LaunchServices from attaching new windows to already-running Chrome
             app_bundle = None
             p_obj = Path(browser_path)
             for parent in [p_obj] + list(p_obj.parents):
@@ -448,17 +487,17 @@ def launch_browser(
                     app_bundle = str(parent.resolve())
                     break
 
+            launched = False
             if app_bundle:
-                open_cmd = ["open", "-n", "-a", app_bundle, "--args"] + flags[1:]
-                subprocess.Popen(
-                    open_cmd,
-                    env=proc_env,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    stdin=subprocess.DEVNULL,
-                    start_new_session=True
-                )
-            else:
+                try:
+                    open_cmd = ["open", "-n", "-a", app_bundle, "--args"] + flags[1:]
+                    res = subprocess.run(open_cmd, env=proc_env, capture_output=True, text=True)
+                    if res.returncode == 0:
+                        launched = True
+                except Exception:
+                    pass
+
+            if not launched:
                 subprocess.Popen(
                     flags,
                     env=proc_env,

@@ -494,34 +494,83 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
             subprocess.run(["chmod", "-R", "+x", str(target_folder.resolve())], check=False)
             subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(target_folder.resolve())], check=False)
             
-            # Inject custom Root Detect icons & Info.plist branding
+            # 1. Rename any Chromium / Google Chrome app bundles to "Root Detect.app"
+            for old_app in list(target_folder.glob("**/*.app")):
+                if "chrome" in old_app.name.lower() or "chromium" in old_app.name.lower():
+                    new_app = old_app.parent / "Root Detect.app"
+                    if not new_app.exists():
+                        old_app.rename(new_app)
+
             icns_src = Path(__file__).parent / "assets" / "app.icns"
-            if icns_src.exists():
-                for icns in target_folder.glob("**/*.icns"):
+            
+            for app_dir in target_folder.glob("**/*.app"):
+                # 2. Rename executable inside MacOS/
+                macos_dir = app_dir / "Contents" / "MacOS"
+                if macos_dir.is_dir():
+                    for exe_file in macos_dir.iterdir():
+                        if exe_file.is_file() and exe_file.name != "Root Detect" and not exe_file.name.endswith(".dylib"):
+                            new_exe = macos_dir / "Root Detect"
+                            exe_file.rename(new_exe)
+                            os.chmod(new_exe, 0o755)
+                            break
+
+                # 3. Patch Info.plist
+                plist_file = app_dir / "Contents" / "Info.plist"
+                if plist_file.is_file():
+                    import plistlib
                     try:
-                        shutil.copy(icns_src, icns)
+                        with open(plist_file, "rb") as f:
+                            pl = plistlib.load(f)
+                        pl["CFBundleDisplayName"] = "Root Detect"
+                        pl["CFBundleName"] = "Root Detect"
+                        pl["CFBundleExecutable"] = "Root Detect"
+                        pl["CFBundleIconFile"] = "app.icns"
+                        if "CFBundleIconName" in pl:
+                            del pl["CFBundleIconName"]
+                        pl["LSHasLocalizedDisplayName"] = False
+                        with open(plist_file, "wb") as f:
+                            plistlib.dump(pl, f)
                     except Exception:
                         pass
-            
-            import plistlib
-            for plist_file in target_folder.glob("**/Contents/Info.plist"):
-                try:
-                    with open(plist_file, "rb") as f:
-                        pl = plistlib.load(f)
-                    pl["CFBundleDisplayName"] = "Root Detect"
-                    pl["CFBundleName"] = "Root Detect"
-                    with open(plist_file, "wb") as f:
-                        plistlib.dump(pl, f)
-                except Exception:
-                    pass
 
-            # Clear quarantine/extended attributes and re-sign ad-hoc so macOS Gatekeeper accepts the app
-            for app_dir in target_folder.glob("**/*.app"):
-                try:
-                    subprocess.run(["xattr", "-cr", str(app_dir.resolve())], check=False)
-                    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app_dir.resolve())], check=False)
-                except Exception:
-                    pass
+                # 4. Remove Assets.car to force icon loading from app.icns
+                for car in app_dir.glob("**/Assets.car"):
+                    try:
+                        car.unlink()
+                    except Exception:
+                        pass
+
+                # 5. Copy app.icns
+                if icns_src.exists():
+                    for r_dir in [app_dir / "Contents" / "Resources"] + list(app_dir.glob("**/Contents/Resources")):
+                        if r_dir.is_dir():
+                            try:
+                                shutil.copy(icns_src, r_dir / "app.icns")
+                            except Exception:
+                                pass
+
+                # 6. Update InfoPlist.strings in all language bundles
+                for strings_file in app_dir.glob("**/InfoPlist.strings"):
+                    try:
+                        with open(strings_file, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
+                        lines = [l for l in content.splitlines() if not l.startswith("CFBundleDisplayName") and not l.startswith("CFBundleName")]
+                        lines.insert(0, 'CFBundleDisplayName = "Root Detect";')
+                        lines.insert(1, 'CFBundleName = "Root Detect";')
+                        with open(strings_file, "w", encoding="utf-8") as f:
+                            f.write("\n".join(lines) + "\n")
+                    except Exception:
+                        pass
+
+                # 7. Strip extended attributes without following symlinks and ad-hoc sign
+                subprocess.run(["xattr", "-rcs", str(app_dir.resolve())], check=False)
+                subprocess.run(["codesign", "--force", "--deep", "-s", "-", str(app_dir.resolve())], check=False)
+                
+                # 8. Register with LaunchServices
+                lsregister = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+                if os.path.exists(lsregister):
+                    subprocess.run([lsregister, "-f", "-R", "-trusted", str(app_dir.resolve())], check=False)
+                subprocess.run(["touch", str(app_dir.resolve())], check=False)
         except Exception:
             pass
 
