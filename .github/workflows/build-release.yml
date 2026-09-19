@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v1.0.2)'
+        description: 'Release Tag (e.g. v1.0.5)'
         required: false
-        default: 'v1.0.2'
+        default: 'v1.0.5'
 
 permissions:
   contents: write
@@ -31,11 +31,8 @@ jobs:
             os_label: Windows (x64)
             platform: windows
           - os: macos-latest
-            os_label: macOS Apple Silicon (arm64)
+            os_label: macOS (arm64)
             platform: macos-arm64
-          - os: macos-13
-            os_label: macOS Intel (x64)
-            platform: macos-x64
           - os: ubuntu-22.04
             os_label: Linux (x64)
             platform: linux-x64
@@ -71,13 +68,13 @@ jobs:
           Get-ChildItem artifacts
 
       - name: Package macOS Artifacts
-        if: startsWith(matrix.platform, 'macos')
+        if: matrix.platform == 'macos-arm64'
         run: |
           mkdir -p artifacts
           chmod +x dist/RootDetect-Web dist/RootDetect-CLI
           cd dist
-          zip -9 ../artifacts/RootDetect-Web-${{ matrix.platform }}.zip RootDetect-Web
-          zip -9 ../artifacts/RootDetect-CLI-${{ matrix.platform }}.zip RootDetect-CLI
+          zip -9 ../artifacts/RootDetect-Web-macos-arm64.zip RootDetect-Web
+          zip -9 ../artifacts/RootDetect-CLI-macos-arm64.zip RootDetect-CLI
           cd ..
           ls -la artifacts/
 
@@ -137,9 +134,6 @@ jobs:
             - Apple Silicon (M1/M2/M3/M4):
               - [`RootDetect-Web-macos-arm64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-macos-arm64.zip)
               - [`RootDetect-CLI-macos-arm64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-macos-arm64.zip)
-            - Intel (x86_64):
-              - [`RootDetect-Web-macos-x64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-macos-x64.zip)
-              - [`RootDetect-CLI-macos-x64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-macos-x64.zip)
 
             #### Linux:
             - [`RootDetect-Web-linux-x64.tar.gz`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-linux-x64.tar.gz)

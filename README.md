@@ -28,7 +28,6 @@
 | :--- | :--- | :--- |
 | **Windows** (x64) | [**RootDetect-Web.exe**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web.exe) | [**RootDetect-CLI.exe**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI.exe) |
 | **macOS** (Apple Silicon M1-M4) | [**RootDetect-Web-macos-arm64.zip**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web-macos-arm64.zip) | [**RootDetect-CLI-macos-arm64.zip**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI-macos-arm64.zip) |
-| **macOS** (Intel x86_64) | [**RootDetect-Web-macos-x64.zip**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web-macos-x64.zip) | [**RootDetect-CLI-macos-x64.zip**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI-macos-x64.zip) |
 | **Linux** (x86_64) | [**RootDetect-Web-linux-x64.tar.gz**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-Web-linux-x64.tar.gz) | [**RootDetect-CLI-linux-x64.tar.gz**](https://github.com/nadaroot/freeantidetect/releases/latest/download/RootDetect-CLI-linux-x64.tar.gz) |
 
 ---
