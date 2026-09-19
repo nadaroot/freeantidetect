@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from rootdetect.fingerprints import generate_random_fingerprint
+from rootdetect.fingerprints import generate_random_fingerprint, sanitize_fingerprint
 from rootdetect.proxy import parse_proxy_string
 
 DEFAULT_STORAGE_DIR = Path.home() / ".rootdetect"
@@ -20,17 +20,25 @@ class ProfileManager:
         if base_dir:
             self.base_dir = Path(base_dir)
         else:
+            local_base = Path(__file__).parent.parent / "profiles_data"
             try:
-                DEFAULT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-                self.base_dir = DEFAULT_STORAGE_DIR
+                local_base.mkdir(parents=True, exist_ok=True)
+                self.base_dir = local_base
             except (PermissionError, OSError):
-                self.base_dir = Path.cwd() / "profiles_data"
+                self.base_dir = Path.home() / ".rootdetect"
 
         self.profiles_dir = self.base_dir / "profiles"
         self.config_file = self.base_dir / "profiles.json"
         
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.profiles_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+            self.profiles_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError):
+            self.base_dir = Path.cwd() / "profiles_data"
+            self.profiles_dir = self.base_dir / "profiles"
+            self.config_file = self.base_dir / "profiles.json"
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+            self.profiles_dir.mkdir(parents=True, exist_ok=True)
         self._ensure_config()
 
     def _ensure_config(self):
@@ -41,7 +49,17 @@ class ProfileManager:
     def _load_data(self) -> Dict[str, Any]:
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+            changed = False
+            for p in data.get("profiles", []):
+                if "fingerprint" in p:
+                    orig = json.dumps(p["fingerprint"], sort_keys=True)
+                    p["fingerprint"] = sanitize_fingerprint(p["fingerprint"])
+                    if json.dumps(p["fingerprint"], sort_keys=True) != orig:
+                        changed = True
+            if changed:
+                self._save_data(data)
+            return data
         except Exception:
             return {"version": 1, "profiles": []}
 

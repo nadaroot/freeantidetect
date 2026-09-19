@@ -6,8 +6,22 @@ Minimalist, clean typography and monochrome aesthetic.
 import os
 import sys
 import time
+import subprocess
 from pathlib import Path
 from typing import Optional
+
+# Windows console UTF-8 & ANSI color initialization
+if sys.platform == "win32":
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 try:
     from rich.console import Console
@@ -402,8 +416,67 @@ def handle_browsers_info():
 
 
 
+import webbrowser
+from rootdetect.web_server import start_web_server
+
+_web_server_instance = None
+
+def handle_open_web_ui(port: int = 5050):
+    global _web_server_instance
+    actual_port = port
+    if _web_server_instance is None:
+        try:
+            _web_server_instance = start_web_server(port)
+            actual_port = _web_server_instance.server_port
+        except Exception:
+            pass
+    elif hasattr(_web_server_instance, 'server_port'):
+        actual_port = _web_server_instance.server_port
+
+    url = f"http://127.0.0.1:{actual_port}"
+    if HAVE_RICH:
+        console.print(f"\n[green]• Web Dashboard запущен:[/green] [white]{url}[/white]")
+        console.print("[dim]• Открытие окна интерфейса...[/dim]")
+    else:
+        print(f"• Web Dashboard: {url}")
+
+    # Launch in standalone App Window mode if Chromium is available
+    browsers = find_installed_browsers()
+    app_launched = False
+    for b in browsers:
+        if b.get("engine") == "chromium" or "chrome" in b["path"].lower() or "edge" in b["path"].lower() or "brave" in b["path"].lower():
+            try:
+                subprocess.Popen(
+                    [b["path"], f"--app={url}", "--window-size=1180,800"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True
+                )
+                app_launched = True
+                break
+            except Exception:
+                pass
+
+    if not app_launched:
+        webbrowser.open(url)
+
+    time.sleep(1.5)
+
 def main():
     manager = ProfileManager()
+
+    # Check CLI arguments
+    if len(sys.argv) > 1 and ("--web" in sys.argv or "-w" in sys.argv or "web" in sys.argv):
+        print_header()
+        handle_open_web_ui()
+        print("Нажмите Ctrl+C для остановки сервера...")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nСервер остановлен.")
+            sys.exit(0)
 
     while True:
         clear_screen()
@@ -418,9 +491,10 @@ def main():
             console.print("  [white][4][/white] Проверить прокси")
             console.print("  [white][5][/white] Удалить профиль")
             console.print("  [white][6][/white] Браузеры в системе")
+            console.print("  [white][7][/white] Открыть Web интерфейс (Окно программы)")
             console.print("  [dim][0] Выход[/dim]\n")
 
-            choice = Prompt.ask("[dim]root-detect[/dim] [white]›[/white]", choices=["0", "1", "2", "3", "4", "5", "6"], default="1")
+            choice = Prompt.ask("[dim]root-detect[/dim] [white]›[/white]", choices=["0", "1", "2", "3", "4", "5", "6", "7"], default="1")
         else:
             print("1. Запустить профиль")
             print("2. Создать профиль")
@@ -428,6 +502,7 @@ def main():
             print("4. Проверить прокси")
             print("5. Удалить профиль")
             print("6. Браузеры в системе")
+            print("7. Открыть Web интерфейс")
             print("0. Выход")
             choice = input("root-detect > ")
 
@@ -443,6 +518,8 @@ def main():
             handle_delete_profile(manager)
         elif choice == "6":
             handle_browsers_info()
+        elif choice == "7":
+            handle_open_web_ui()
         elif choice == "0":
             clear_screen()
             print("Сессия завершена.")

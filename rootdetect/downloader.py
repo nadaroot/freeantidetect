@@ -65,14 +65,15 @@ AVAILABLE_BROWSERS = [
 
 def get_browsers_storage_dir() -> Path:
     """Returns directory for storing downloaded portable browsers."""
+    local_base = Path(__file__).parent.parent / "profiles_data" / "browsers"
     try:
-        base = Path.home() / ".rootdetect" / "browsers"
-        base.mkdir(parents=True, exist_ok=True)
-        return base
+        local_base.mkdir(parents=True, exist_ok=True)
+        return local_base
     except (PermissionError, OSError):
-        base = Path.cwd() / "profiles_data" / "browsers"
-        base.mkdir(parents=True, exist_ok=True)
-        return base
+        pass
+    base = Path.home() / ".rootdetect" / "browsers"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
 
 def get_platform_key() -> Optional[str]:
     """Determines platform identifier (mac-arm64, mac-x64, win64, linux64)."""
@@ -332,21 +333,24 @@ def find_downloaded_browsers() -> List[Dict[str, str]]:
     """Lists already downloaded portable browsers in storage directory."""
     browsers_dir = get_browsers_storage_dir()
     found = []
-    if not browsers_dir.exists():
-        return found
+    try:
+        if not browsers_dir.exists():
+            return found
 
-    for item in browsers_dir.iterdir():
-        if item.is_dir():
-            bin_path = _locate_binary_in_folder(item)
-            if bin_path:
-                engine = "gecko" if ("firefox" in item.name.lower() or "librewolf" in item.name.lower()) else "chromium"
-                found.append({
-                    "name": f"{item.name}",
-                    "path": str(bin_path.resolve()),
-                    "type": "portable",
-                    "engine": engine,
-                    "folder": str(item.resolve())
-                })
+        for item in browsers_dir.iterdir():
+            if item.is_dir():
+                bin_path = _locate_binary_in_folder(item)
+                if bin_path:
+                    engine = "gecko" if ("firefox" in item.name.lower() or "librewolf" in item.name.lower()) else "chromium"
+                    found.append({
+                        "name": f"{item.name}",
+                        "path": str(bin_path.resolve()),
+                        "type": "portable",
+                        "engine": engine,
+                        "folder": str(item.resolve())
+                    })
+    except (PermissionError, OSError):
+        pass
     return found
 
 def _locate_binary_in_folder(folder: Path) -> Optional[Path]:
@@ -484,6 +488,13 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
     finally:
         if temp_file.exists():
             temp_file.unlink()
+
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(["chmod", "-R", "+x", str(target_folder.resolve())], check=False)
+            subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(target_folder.resolve())], check=False)
+        except Exception:
+            pass
 
     bin_path = _locate_binary_in_folder(target_folder)
     if bin_path:

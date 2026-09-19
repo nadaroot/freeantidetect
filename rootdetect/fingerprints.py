@@ -260,7 +260,10 @@ def generate_fingerprint_for_preset(
         res_w, res_h = random.choice(DESKTOP_RESOLUTIONS)
 
     # Cores and memory
-    if os_info.get("is_mobile"):
+    if preset_key.startswith("ios_"):
+        cores = 8 if preset_key == "ios_ipad_pro" else 6
+        memory = None  # WebKit on iOS does not expose deviceMemory
+    elif os_info.get("is_mobile"):
         cores = custom_cores or random.choice([6, 8])
         memory = custom_memory or random.choice([6, 8, 12])
     else:
@@ -313,3 +316,91 @@ def generate_random_fingerprint(os_type: Optional[str] = None) -> Dict[str, Any]
         preset_key = "windows_11"
 
     return generate_fingerprint_for_preset(preset_key)
+
+def sanitize_fingerprint(fp: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensures all fingerprint fields are internally consistent with their preset and OS."""
+    if not isinstance(fp, dict):
+        return generate_fingerprint_for_preset("windows_11")
+
+    preset_key = fp.get("preset_key")
+    os_name = fp.get("os", "").lower()
+    ua = fp.get("user_agent", "").lower()
+
+    if not preset_key or preset_key not in OS_PRESETS:
+        if "pixel" in os_name or "pixel" in ua:
+            preset_key = "android_pixel_8"
+        elif "samsung" in os_name or "sm-s9" in ua:
+            preset_key = "android_samsung_s24"
+        elif "xiaomi" in os_name or "23116" in ua:
+            preset_key = "android_xiaomi_14"
+        elif "iphone 16" in os_name or "iphone os 18" in ua:
+            preset_key = "ios_iphone_16"
+        elif "iphone 15" in os_name or "iphone os 17" in ua:
+            preset_key = "ios_iphone_15"
+        elif "ipad" in os_name or "ipad" in ua:
+            preset_key = "ios_ipad_pro"
+        elif "windows 11" in os_name or "windows 11" in ua:
+            preset_key = "windows_11"
+        elif "windows 10" in os_name or "windows 10" in ua:
+            preset_key = "windows_10"
+        elif "windows 8" in os_name or "windows nt 6.3" in ua:
+            preset_key = "windows_8_1"
+        elif "windows 7" in os_name or "windows nt 6.1" in ua:
+            preset_key = "windows_7"
+        elif "macos 15" in os_name or "sequoia" in os_name:
+            preset_key = "macos_15"
+        elif "macos 14" in os_name or "sonoma" in os_name:
+            preset_key = "macos_14"
+        elif "macos 13" in os_name or "ventura" in os_name:
+            preset_key = "macos_13"
+        elif "linux" in os_name or "x11; linux" in ua:
+            preset_key = "linux"
+        else:
+            preset_key = "windows_11"
+
+    preset = OS_PRESETS[preset_key]
+    fp["preset_key"] = preset_key
+    fp["os"] = preset["name"]
+    fp["category"] = preset["category"]
+    fp["platform"] = preset["platform"]
+    fp["user_agent"] = preset["ua"]
+    fp["is_mobile"] = preset.get("is_mobile", False)
+    fp["touch"] = preset.get("touch", False)
+    fp["max_touch_points"] = preset.get("max_touch_points", 0)
+
+    if preset_key.startswith("ios_"):
+        fp["hardware_concurrency"] = 8 if preset_key == "ios_ipad_pro" else 6
+        fp["device_memory"] = None
+        def_res = preset.get("default_res", (393, 852))
+        fp["screen_width"] = def_res[0]
+        fp["screen_height"] = def_res[1]
+        fp["scale_factor"] = preset.get("scale_factor", 3.0)
+    elif preset.get("is_mobile"):
+        def_res = preset.get("default_res", (412, 892))
+        if fp.get("screen_width", 0) > 1000 or not fp.get("screen_width"):
+            fp["screen_width"] = def_res[0]
+            fp["screen_height"] = def_res[1]
+        fp["scale_factor"] = preset.get("scale_factor", 2.625)
+    else:
+        if fp.get("screen_width", 0) < 1000:
+            fp["screen_width"] = 1920
+            fp["screen_height"] = 1080
+        fp["scale_factor"] = 1.0
+
+    gpu_cat = preset.get("default_gpu_category", "windows")
+    gpu_pool = GPU_PRESETS.get(gpu_cat, GPU_PRESETS["windows"])
+    curr_vendor = fp.get("webgl_vendor", "")
+    curr_renderer = fp.get("webgl_renderer", "")
+    valid_gpu = any(g["renderer"] == curr_renderer for g in gpu_pool)
+    if not valid_gpu or not curr_vendor or not curr_renderer:
+        g = random.choice(gpu_pool)
+        fp["webgl_vendor"] = g["vendor"]
+        fp["webgl_renderer"] = g["renderer"]
+
+    if not fp.get("timezone"):
+        fp["timezone"] = "Europe/Moscow"
+    if not fp.get("languages"):
+        fp["languages"] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+
+    return fp
+

@@ -1,17 +1,28 @@
 {
   "manifest_version": 3,
   "name": "Root Detect Stealth Engine",
-  "version": "1.0.0",
-  "description": "Stealth fingerprint spoofing and proxy helper for Root Detect",
+  "version": "1.3.4",
+  "description": "Stealth fingerprint spoofing for Root Detect",
   "permissions": [
     "privacy",
-    "webRequest",
-    "webRequestAuthProvider",
-    "storage"
+    "storage",
+    "declarativeNetRequest",
+    "scripting",
+    "webNavigation",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -23,6 +34,19 @@
       "world": "MAIN",
       "all_frames": true,
       "match_about_blank": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js", "config.json"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
