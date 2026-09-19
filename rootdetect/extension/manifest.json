@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Root Detect Stealth Engine",
+  "version": "1.0.0",
+  "description": "Stealth fingerprint spoofing and proxy helper for Root Detect",
+  "permissions": [
+    "privacy",
+    "webRequest",
+    "webRequestAuthProvider",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ]
+}
