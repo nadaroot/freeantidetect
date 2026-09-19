@@ -81,8 +81,8 @@ def build_binary(target: str = "web"):
     
     ext = ".exe" if sys.platform == "win32" else ""
     dist_file = base_dir / "dist" / f"{bin_name}{ext}"
-    print(f"\n[✓] Сборка {bin_name} успешно завершена!")
-    print(f"[✓] Готовый исполняемый файл находится в: {dist_file}")
+    print(f"\n[+] Сборка {bin_name} успешно завершена!")
+    print(f"[+] Готовый исполняемый файл находится в: {dist_file}")
     return dist_file
 
 def main():

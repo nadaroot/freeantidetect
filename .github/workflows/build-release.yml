@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v1.0.1)'
+        description: 'Release Tag (e.g. v1.0.2)'
         required: false
-        default: 'v1.0.1'
+        default: 'v1.0.2'
 
 permissions:
   contents: write
@@ -118,37 +118,37 @@ jobs:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           name: Root Detect Release ${{ github.event.inputs.tag_name || github.ref_name }}
           body: |
-            ### 🚀 Root Detect — Multi-Platform Release
+            ### Root Detect — Multi-Platform Release
 
-            **Root Detect** — локальный автономный антидетект-браузер с веб-дашбордом и консольным TUI.
+            Root Detect — локальный автономный антидетект-браузер с веб-дашбордом и консольным TUI.
 
             ---
 
-            ### 📦 Загрузка сборок (Downloads):
+            ### Загрузка сборок (Downloads):
 
-            #### 🪟 Windows:
-            - **[`RootDetect-Web.exe`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web.exe)** — Веб-интерфейс в 1 клик (Рекомендуется)
-            - **[`RootDetect-CLI.exe`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI.exe)** — Консольная версия (TUI)
+            #### Windows:
+            - [`RootDetect-Web.exe`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web.exe) — Веб-интерфейс в 1 клик (Рекомендуется)
+            - [`RootDetect-CLI.exe`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI.exe) — Консольная версия (TUI)
 
-            #### 🍏 macOS:
-            - **Apple Silicon (M1/M2/M3/M4):**
+            #### macOS:
+            - Apple Silicon (M1/M2/M3/M4):
               - [`RootDetect-Web-macos-arm64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-macos-arm64.zip)
               - [`RootDetect-CLI-macos-arm64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-macos-arm64.zip)
-            - **Intel (x86_64):**
+            - Intel (x86_64):
               - [`RootDetect-Web-macos-x64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-macos-x64.zip)
               - [`RootDetect-CLI-macos-x64.zip`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-macos-x64.zip)
 
-            #### 🐧 Linux:
+            #### Linux:
             - [`RootDetect-Web-linux-x64.tar.gz`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-Web-linux-x64.tar.gz)
             - [`RootDetect-CLI-linux-x64.tar.gz`](https://github.com/nadaroot/freeantidetect/releases/download/${{ github.event.inputs.tag_name || github.ref_name }}/RootDetect-CLI-linux-x64.tar.gz)
 
             ---
 
-            ### ✨ Основные возможности:
-            - 🌐 **Web Dashboard & TUI**: Управление профилями через современный веб-интерфейс (`127.0.0.1:5050`) или консоль.
-            - 🛡️ **Движки Chromium & Gecko**: Чистые сборки без предупреждений тестирования и баннеров.
-            - 🎭 **Спуфинг мобильных и ПК систем**: Windows 11/10, macOS Sequoia/Sonoma, iOS 18 Safari (iPhone/iPad), Android (Galaxy S24, Pixel 8), Linux.
-            - 🔒 **Полная автономность**: Без облаков, без подписок, локальное хранение данных.
+            ### Возможности:
+            - Web Dashboard & TUI: Управление профилями через веб-интерфейс (127.0.0.1:5050) или консоль.
+            - Движки Chromium & Gecko: Чистые сборки без предупреждений тестирования и баннеров.
+            - Спуфинг мобильных и ПК систем: Windows 11/10, macOS Sequoia/Sonoma, iOS 18 Safari (iPhone/iPad), Android (Galaxy S24, Pixel 8), Linux.
+            - Полная автономность: Без облаков, без подписок, локальное хранение данных.
           files: release_assets/*
           draft: false
           prerelease: false

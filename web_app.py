@@ -54,7 +54,7 @@ def main():
         sys.exit(1)
 
     url = f"http://127.0.0.1:{actual_port}"
-    print(f"\n[✓] Веб-сервер запущен: {url}")
+    print(f"\n[+] Веб-сервер запущен: {url}")
     print("[*] Открытие интерфейса...")
 
     # Try launching in App Window mode for native look & feel
@@ -78,7 +78,7 @@ def main():
     if not app_launched:
         webbrowser.open(url)
 
-    print("\n[✓] Интерфейс открыт в браузере.")
+    print("\n[+] Интерфейс открыт в браузере.")
     print("[i] Для завершения работы нажмите Ctrl + C в этом окне.")
     print("-" * 60)
 
@@ -91,7 +91,7 @@ def main():
             server.shutdown()
         except Exception:
             pass
-        print("[✓] Работа Root Detect завершена.")
+        print("[+] Работа Root Detect завершена.")
         sys.exit(0)
 
 if __name__ == "__main__":
