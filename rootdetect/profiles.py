@@ -3,6 +3,7 @@ Profile manager and local JSON storage for Root Detect.
 """
 
 import os
+import sys
 import json
 import uuid
 import shutil
