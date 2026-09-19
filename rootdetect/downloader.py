@@ -65,7 +65,11 @@ AVAILABLE_BROWSERS = [
 
 def get_browsers_storage_dir() -> Path:
     """Returns directory for storing downloaded portable browsers."""
-    local_base = Path(__file__).parent.parent / "profiles_data" / "browsers"
+    if getattr(sys, 'frozen', False):
+        app_dir = Path(sys.executable).parent
+    else:
+        app_dir = Path(__file__).parent.parent
+    local_base = app_dir / "profiles_data" / "browsers"
     try:
         local_base.mkdir(parents=True, exist_ok=True)
         return local_base
@@ -501,7 +505,10 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
                     if not new_app.exists():
                         old_app.rename(new_app)
 
-            icns_src = Path(__file__).parent / "assets" / "app.icns"
+            if getattr(sys, '_MEIPASS', None):
+                icns_src = Path(sys._MEIPASS) / "rootdetect" / "assets" / "app.icns"
+            else:
+                icns_src = Path(__file__).parent / "assets" / "app.icns"
             
             for app_dir in target_folder.glob("**/*.app"):
                 # 2. Rename executable inside MacOS/

@@ -853,7 +853,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path in ['/logo.png', '/favicon.png', '/favicon.ico']:
-            asset_file = Path(__file__).parent / "assets" / "logo.png"
+            if getattr(sys, '_MEIPASS', None):
+                asset_file = Path(sys._MEIPASS) / "rootdetect" / "assets" / "logo.png"
+            else:
+                asset_file = Path(__file__).parent / "assets" / "logo.png"
             if asset_file.exists():
                 with open(asset_file, "rb") as f:
                     img_data = f.read()

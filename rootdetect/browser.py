@@ -15,7 +15,10 @@ from typing import Optional, Dict, Any, List, Tuple
 from rootdetect.downloader import find_downloaded_browsers, download_chromium
 
 # Extension source directory inside package
-EXTENSION_SRC_DIR = Path(__file__).parent / "extension"
+if getattr(sys, '_MEIPASS', None):
+    EXTENSION_SRC_DIR = Path(sys._MEIPASS) / "rootdetect" / "extension"
+else:
+    EXTENSION_SRC_DIR = Path(__file__).parent / "extension"
 
 def find_installed_browsers() -> List[Dict[str, str]]:
     """

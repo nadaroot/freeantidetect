@@ -20,7 +20,11 @@ class ProfileManager:
         if base_dir:
             self.base_dir = Path(base_dir)
         else:
-            local_base = Path(__file__).parent.parent / "profiles_data"
+            if getattr(sys, 'frozen', False):
+                app_dir = Path(sys.executable).parent
+            else:
+                app_dir = Path(__file__).parent.parent
+            local_base = app_dir / "profiles_data"
             try:
                 local_base.mkdir(parents=True, exist_ok=True)
                 self.base_dir = local_base
