@@ -514,6 +514,14 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
                         plistlib.dump(pl, f)
                 except Exception:
                     pass
+
+            # Clear quarantine/extended attributes and re-sign ad-hoc so macOS Gatekeeper accepts the app
+            for app_dir in target_folder.glob("**/*.app"):
+                try:
+                    subprocess.run(["xattr", "-cr", str(app_dir.resolve())], check=False)
+                    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app_dir.resolve())], check=False)
+                except Exception:
+                    pass
         except Exception:
             pass
 
