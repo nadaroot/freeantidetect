@@ -10,15 +10,25 @@ import subprocess
 import shutil
 from pathlib import Path
 
+# Force UTF-8 on Windows and reconfigure stdout/stderr with replacement fallback
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 def build_binary(target: str = "web"):
     base_dir = Path(__file__).parent.resolve()
-    print(f"\n=== Сборка Root Detect [{target.upper()}] в единый исполняемый файл ===")
+    print(f"\n=== Building Root Detect [{target.upper()}] standalone binary ===")
     
     # Check if pyinstaller is installed
     try:
         import PyInstaller
     except ImportError:
-        print("[!] PyInstaller не установлен. Устанавливаем: pip install pyinstaller")
+        print("[!] PyInstaller not found. Installing: pip install pyinstaller")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
     sep = ";" if sys.platform == "win32" else ":"
@@ -76,18 +86,18 @@ def build_binary(target: str = "web"):
 
     cmd.append(str(entry_point))
 
-    print(f"Запуск команды сборки: {' '.join(cmd)}\n")
+    print(f"Running build command: {' '.join(cmd)}\n")
     subprocess.check_call(cmd, cwd=str(base_dir))
     
     ext = ".exe" if sys.platform == "win32" else ""
     dist_file = base_dir / "dist" / f"{bin_name}{ext}"
-    print(f"\n[+] Сборка {bin_name} успешно завершена!")
-    print(f"[+] Готовый исполняемый файл находится в: {dist_file}")
+    print(f"\n[+] Build successful: {bin_name}")
+    print(f"[+] Output binary: {dist_file}")
     return dist_file
 
 def main():
-    parser = argparse.ArgumentParser(description="Сборщик исполняемых файлов Root Detect")
-    parser.add_argument("--target", choices=["web", "cli", "all"], default="web", help="Цель сборки (web, cli или all)")
+    parser = argparse.ArgumentParser(description="Root Detect Standalone Binary Builder")
+    parser.add_argument("--target", choices=["web", "cli", "all"], default="web", help="Build target (web, cli, or all)")
     args = parser.parse_args()
 
     if args.target == "all":
