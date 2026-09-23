@@ -354,7 +354,7 @@ def _locate_binary_in_folder(folder: Path) -> Optional[Path]:
                 return raws[0]
 
     elif "windows" in system or sys.platform == "win32":
-        preferred = ["chrome.exe", "chromium.exe", "brave.exe", "thorium.exe", "firefox.exe", "librewolf.exe"]
+        preferred = ["rootdetectbrowser.exe", "root detect.exe", "rootdetect.exe", "chrome.exe", "chromium.exe", "brave.exe", "thorium.exe", "firefox.exe", "librewolf.exe"]
         for p in preferred:
             for cand in folder.rglob("*.exe"):
                 if cand.is_file() and cand.name.lower() == p:
@@ -473,6 +473,55 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
         if temp_file.exists():
             temp_file.unlink()
 
+    # Pre-configure portable Chromium with master preferences & icons
+    if getattr(sys, '_MEIPASS', None):
+        assets_dir = Path(sys._MEIPASS) / "rootdetect" / "assets"
+    else:
+        assets_dir = Path(__file__).parent / "assets"
+
+    # 1. Copy app.ico
+    ico_src = assets_dir / "app.ico"
+    if ico_src.exists():
+        try:
+            shutil.copy(ico_src, target_folder / "app.ico")
+        except Exception:
+            pass
+
+    # 2. Configure initial_preferences / master_preferences for clean stealth startup
+    init_prefs = {
+        "distribution": {
+            "skip_first_run_ui": True,
+            "show_welcome_page": False,
+            "import_bookmarks": False,
+            "import_history": False,
+            "import_search_engine": False,
+            "import_saved_passwords": False,
+            "do_not_create_desktop_shortcut": True,
+            "do_not_create_quick_launch_shortcut": True,
+            "do_not_register_for_update_launch": True,
+            "make_chrome_default": False,
+            "make_chrome_default_for_user": False,
+            "suppress_first_run_bubble": True,
+            "suppress_first_run_default_browser_prompt": True
+        }
+    }
+    for sub in [target_folder] + [d for d in target_folder.iterdir() if d.is_dir()]:
+        for pref_name in ["initial_preferences", "master_preferences"]:
+            try:
+                with open(sub / pref_name, "w", encoding="utf-8") as pf:
+                    json.dump(init_prefs, pf, indent=2)
+            except Exception:
+                pass
+
+    if sys.platform == "win32" or "windows" in platform.system().lower():
+        try:
+            for exe_file in list(target_folder.rglob("chrome.exe")):
+                rd_exe = exe_file.parent / "RootDetectBrowser.exe"
+                if not rd_exe.exists():
+                    shutil.copy2(exe_file, rd_exe)
+        except Exception:
+            pass
+
     if sys.platform == "darwin":
         try:
             subprocess.run(["chmod", "-R", "+x", str(target_folder.resolve())], check=False)
@@ -485,10 +534,7 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
                     if not new_app.exists():
                         old_app.rename(new_app)
 
-            if getattr(sys, '_MEIPASS', None):
-                icns_src = Path(sys._MEIPASS) / "rootdetect" / "assets" / "app.icns"
-            else:
-                icns_src = Path(__file__).parent / "assets" / "app.icns"
+            icns_src = assets_dir / "app.icns"
             
             for app_dir in target_folder.glob("**/*.app"):
                 # 2. Rename executable inside MacOS/
@@ -573,3 +619,4 @@ def download_browser(browser_id: str = "chrome_cft") -> Optional[str]:
 
 def download_chromium() -> Optional[str]:
     return download_browser("chrome_cft")
+

@@ -323,14 +323,16 @@ def prepare_profile_extension(profile: Dict[str, Any], target_dir: Path) -> Path
     with open(EXTENSION_SRC_DIR / "inject.js", "r", encoding="utf-8") as f:
         inject_base = f.read()
 
-    import re
     cfg_json_str = json.dumps(config_data, ensure_ascii=False, indent=8)
-    full_stealth_code = re.sub(
-        r'const cfg = window\.__ROOT_DETECT_CONFIG__ \|\| \{[\s\S]*?\n    \};',
-        f'const cfg = {cfg_json_str};',
-        inject_base,
-        count=1
-    )
+    start_tag = "/* __ROOT_DETECT_CONFIG_START__ */"
+    end_tag = "/* __ROOT_DETECT_CONFIG_END__ */"
+    if start_tag in inject_base and end_tag in inject_base:
+        prefix = inject_base.split(start_tag)[0]
+        suffix = inject_base.split(end_tag)[1]
+        full_stealth_code = f"{prefix}{cfg_json_str}{suffix}"
+    else:
+        full_stealth_code = f"window.__ROOT_DETECT_CONFIG__ = {cfg_json_str};\n" + inject_base
+
     with open(runtime_ext_dir / "inject.js", "w", encoding="utf-8") as f:
         f.write(full_stealth_code)
 

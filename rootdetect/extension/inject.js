@@ -1,13 +1,13 @@
 /**
  * Root Detect Master Stealth Engine
  * Injected at document_start in MAIN world & via content script.
- * Protects top window, all child dynamic iframes, window.open, Web Workers,
- * Navigator, Client Hints (NavigatorUAData), WebGL, Canvas, Audio, Screen, Touch, Speech, Plugins, Timezone, Intl.
+ * Complete undetectable fingerprint spoofing for Windows, macOS, Linux, iOS, Android.
  */
 (function () {
     'use strict';
 
-    const cfg = window.__ROOT_DETECT_CONFIG__ || {
+    // Injected config or fallback defaults
+    const cfg = window.__ROOT_DETECT_CONFIG__ || /* __ROOT_DETECT_CONFIG_START__ */ {
         seed: 12345,
         user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.86 Safari/537.36",
         platform: "Win32",
@@ -26,20 +26,36 @@
         is_mobile: false,
         canvas_noise: true,
         audio_noise: true
-    };
+    } /* __ROOT_DETECT_CONFIG_END__ */;
+    try { window.__ROOT_DETECT_CONFIG__ = cfg; } catch(e) {}
 
     // --- 0. FUNCTION PROTOTYPE TOSTRING CAMOUFLAGE ---
     const nativeToStringMap = new WeakMap();
     const originalToString = Function.prototype.toString;
 
-    function makeNative(fn, name) {
+    function makeNative(fn, name, argLength) {
         if (!fn || typeof fn !== 'function') return fn;
-        const fnName = name || fn.name || '';
+        const fnName = name !== undefined ? name : (fn.name || '');
         const str = `function ${fnName}() { [native code] }`;
         nativeToStringMap.set(fn, str);
         try {
-            Object.defineProperty(fn, 'name', { value: fnName, configurable: true });
+            Object.defineProperty(fn, 'name', {
+                value: fnName,
+                writable: false,
+                enumerable: false,
+                configurable: true
+            });
         } catch (e) {}
+        if (argLength !== undefined) {
+            try {
+                Object.defineProperty(fn, 'length', {
+                    value: argLength,
+                    writable: false,
+                    enumerable: false,
+                    configurable: true
+                });
+            } catch (e) {}
+        }
         return fn;
     }
 
@@ -50,7 +66,7 @@
             }
             return originalToString.apply(this, arguments);
         };
-        makeNative(customToString, 'toString');
+        makeNative(customToString, 'toString', 0);
         Object.defineProperty(Function.prototype, 'toString', {
             value: customToString,
             writable: true,
@@ -336,7 +352,7 @@
         // 2. Navigator.prototype
         if (targetWin.Navigator && targetWin.Navigator.prototype) {
             const navProto = targetWin.Navigator.prototype;
-            overrideGetter(navProto, 'webdriver', () => undefined);
+            overrideGetter(navProto, 'webdriver', () => false);
             overrideGetter(navProto, 'userAgent', ua);
             overrideGetter(navProto, 'appVersion', appVer);
             overrideGetter(navProto, 'platform', plat);
@@ -347,6 +363,9 @@
             overrideGetter(navProto, 'vendor', vendorVal);
             overrideGetter(navProto, 'vendorSub', "");
             overrideGetter(navProto, 'productSub', "20030107");
+            overrideGetter(navProto, 'cookieEnabled', true);
+            overrideGetter(navProto, 'onLine', true);
+            overrideGetter(navProto, 'pdfViewerEnabled', () => !isIOS && !isMobile);
             overrideGetter(navProto, 'oscpu', plat.includes("Win") ? undefined : (plat.includes("Mac") ? undefined : (plat.includes("Linux x86") ? "Linux x86_64" : undefined)));
 
             if (isIOS) {
@@ -372,6 +391,7 @@
 
         // Direct fallback on targetWin.navigator instance
         if (targetWin.navigator) {
+            overrideGetter(targetWin.navigator, 'webdriver', () => false);
             overrideGetter(targetWin.navigator, 'platform', plat);
             overrideGetter(targetWin.navigator, 'userAgent', ua);
             overrideGetter(targetWin.navigator, 'appVersion', appVer);
@@ -380,6 +400,9 @@
             overrideGetter(targetWin.navigator, 'maxTouchPoints', maxTouch);
             overrideGetter(targetWin.navigator, 'language', primaryLang);
             overrideGetter(targetWin.navigator, 'languages', frozenLanguages);
+            overrideGetter(targetWin.navigator, 'cookieEnabled', true);
+            overrideGetter(targetWin.navigator, 'onLine', true);
+            overrideGetter(targetWin.navigator, 'pdfViewerEnabled', () => !isIOS && !isMobile);
             overrideGetter(targetWin.navigator, 'plugins', createFakePlugins(targetWin));
             overrideGetter(targetWin.navigator, 'mimeTypes', createFakeMimeTypes(targetWin));
 
@@ -418,7 +441,7 @@
                     wow64: false
                 });
             };
-            makeNative(fakeGetHighEntropy, 'getHighEntropyValues');
+            makeNative(fakeGetHighEntropy, 'getHighEntropyValues', 1);
             uadProto.getHighEntropyValues = fakeGetHighEntropy;
 
             const fakeToJSON = function toJSON() {
@@ -428,11 +451,54 @@
                     platform: uadPlatform
                 };
             };
-            makeNative(fakeToJSON, 'toJSON');
+            makeNative(fakeToJSON, 'toJSON', 0);
             uadProto.toJSON = fakeToJSON;
         }
 
-        // 4. Touch & MatchMedia
+        // 4. Window.chrome Object Simulation (Desktop Chromium)
+        if (!isIOS && !targetWin.chrome) {
+            try {
+                targetWin.chrome = {
+                    app: {
+                        isInstalled: false,
+                        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+                        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+                        getIsInstalled: makeNative(function getIsInstalled() { return false; }, 'getIsInstalled', 0),
+                        getDetails: makeNative(function getDetails() { return null; }, 'getDetails', 0),
+                        runningState: makeNative(function runningState() { return 'cannot_run'; }, 'runningState', 0)
+                    },
+                    csi: makeNative(function csi() { return { startE: Date.now(), onloadT: Date.now(), pageT: 0, tran: 0 }; }, 'csi', 0),
+                    loadTimes: makeNative(function loadTimes() {
+                        const now = Date.now() / 1000;
+                        return {
+                            requestTime: now,
+                            startLoadTime: now,
+                            commitLoadTime: now,
+                            finishDocumentLoadTime: now,
+                            finishLoadTime: now,
+                            firstPaintTime: now,
+                            firstPaintAfterLoadTime: 0,
+                            navigationType: 'Other',
+                            wasFetchedViaSpdy: false,
+                            wasNpnNegotiated: false,
+                            npnNegotiatedProtocol: '',
+                            wasAlternateProtocolAvailable: false,
+                            connectionInfo: 'http/1.1'
+                        };
+                    }, 'loadTimes', 0),
+                    runtime: {
+                        OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+                        OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+                        PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                        PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                        PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+                        RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
+                    }
+                };
+            } catch(e) {}
+        }
+
+        // 5. Touch & MatchMedia
         if (isMobile || maxTouch > 0) {
             try {
                 if (!('ontouchstart' in targetWin)) {
@@ -472,17 +538,19 @@
                 }
                 return res;
             };
-            makeNative(fakeMatchMedia, 'matchMedia');
+            makeNative(fakeMatchMedia, 'matchMedia', 1);
             targetWin.matchMedia = fakeMatchMedia;
         }
 
-        // 5. WebGL Spoofing
+        // 6. WebGL Spoofing
         const UNMASKED_VENDOR_WEBGL = 0x9245;
         const UNMASKED_RENDERER_WEBGL = 0x9246;
         const VENDOR_PARAM = 0x1F00;
         const RENDERER_PARAM = 0x1F01;
+        const VERSION_PARAM = 0x1F02;
+        const SHADING_LANG_PARAM = 0x8B8C;
 
-        function patchWebGL(proto) {
+        function patchWebGL(proto, isWebGL2) {
             if (!proto || !proto.getParameter) return;
             const origGetParam = proto.getParameter;
             const fakeGetParam = function getParameter(param) {
@@ -494,9 +562,11 @@
                 }
                 if (param === VENDOR_PARAM) return "WebKit";
                 if (param === RENDERER_PARAM) return "WebKit WebGL";
+                if (param === VERSION_PARAM) return isWebGL2 ? "WebGL 2.0 (OpenGL ES 3.0 Chromium)" : "WebGL 1.0 (OpenGL ES 2.0 Chromium)";
+                if (param === SHADING_LANG_PARAM) return isWebGL2 ? "WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)" : "WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)";
                 return origGetParam.apply(this, arguments);
             };
-            makeNative(fakeGetParam, 'getParameter');
+            makeNative(fakeGetParam, 'getParameter', 1);
             proto.getParameter = fakeGetParam;
 
             const origGetExt = proto.getExtension;
@@ -507,14 +577,38 @@
                 }
                 return ext;
             };
-            makeNative(fakeGetExt, 'getExtension');
+            makeNative(fakeGetExt, 'getExtension', 1);
             proto.getExtension = fakeGetExt;
+
+            const origGetSupportedExt = proto.getSupportedExtensions;
+            const fakeGetSupportedExt = function getSupportedExtensions() {
+                const list = origGetSupportedExt ? origGetSupportedExt.apply(this, arguments) : [];
+                if (list && Array.isArray(list) && !list.includes('WEBGL_debug_renderer_info')) {
+                    return [...list, 'WEBGL_debug_renderer_info'];
+                }
+                return list;
+            };
+            makeNative(fakeGetSupportedExt, 'getSupportedExtensions', 0);
+            proto.getSupportedExtensions = fakeGetSupportedExt;
+
+            if (cfg.canvas_noise && proto.readPixels) {
+                const origReadPixels = proto.readPixels;
+                proto.readPixels = makeNative(function readPixels(x, y, w, h, format, type, pixels) {
+                    origReadPixels.apply(this, arguments);
+                    if (pixels && pixels.length > 0) {
+                        const step = Math.max(4, Math.floor(pixels.length / 64));
+                        for (let i = 0; i < pixels.length; i += step) {
+                            pixels[i] = Math.min(255, Math.max(0, pixels[i] + (rng() > 0.5 ? 1 : -1)));
+                        }
+                    }
+                }, 'readPixels', 7);
+            }
         }
 
-        if (targetWin.WebGLRenderingContext) patchWebGL(targetWin.WebGLRenderingContext.prototype);
-        if (targetWin.WebGL2RenderingContext) patchWebGL(targetWin.WebGL2RenderingContext.prototype);
+        if (targetWin.WebGLRenderingContext) patchWebGL(targetWin.WebGLRenderingContext.prototype, false);
+        if (targetWin.WebGL2RenderingContext) patchWebGL(targetWin.WebGL2RenderingContext.prototype, true);
 
-        // 6. SpeechSynthesis Voice Spoofing (Purge Apple/Mac voices on non-macOS)
+        // 7. SpeechSynthesis Voice Spoofing (Purge Apple/Mac voices on non-macOS)
         if (targetWin.speechSynthesis && targetWin.SpeechSynthesis) {
             function makeVoice(name, lang, isDef) {
                 const voiceProto = targetWin.SpeechSynthesisVoice ? targetWin.SpeechSynthesisVoice.prototype : Object.prototype;
@@ -566,7 +660,7 @@
 
             const frozenVoices = Object.freeze([...spoofedVoices]);
             const fakeGetVoices = function getVoices() { return [...frozenVoices]; };
-            makeNative(fakeGetVoices, 'getVoices');
+            makeNative(fakeGetVoices, 'getVoices', 0);
 
             targetWin.SpeechSynthesis.prototype.getVoices = fakeGetVoices;
             targetWin.speechSynthesis.getVoices = fakeGetVoices;
@@ -582,7 +676,7 @@
             };
         }
 
-        // 7. Screen & Geometry
+        // 8. Screen & Geometry
         const sw = cfg.screen_width || (isMobile ? 412 : 1920);
         const sh = cfg.screen_height || (isMobile ? 892 : 1080);
         const scale = cfg.scale_factor || (isMobile ? 2.625 : 1.0);
@@ -714,7 +808,7 @@
                         }
                     }
                     return rect;
-                }, 'getBoundingClientRect');
+                }, 'getBoundingClientRect', 0);
             }
         }
 
@@ -724,41 +818,167 @@
             overrideGetter(targetWin.ScreenOrientation.prototype, 'angle', 0);
         }
 
-        // 8. Canvas Noise Protection
-        if (cfg.canvas_noise && targetWin.HTMLCanvasElement) {
-            if (targetWin.CanvasRenderingContext2D) {
+        // 9. Canvas Noise & Hash Coherence Protection
+        if (cfg.canvas_noise) {
+            if (targetWin.CanvasRenderingContext2D && targetWin.CanvasRenderingContext2D.prototype) {
                 const origGetImageData = targetWin.CanvasRenderingContext2D.prototype.getImageData;
+                const origPutImageData = targetWin.CanvasRenderingContext2D.prototype.putImageData;
+
                 targetWin.CanvasRenderingContext2D.prototype.getImageData = makeNative(function getImageData(sx, sy, sw, sh) {
                     const imgData = origGetImageData.apply(this, arguments);
                     if (imgData && imgData.data && imgData.data.length > 0) {
-                        const step = Math.max(4, Math.floor(imgData.data.length / 50));
+                        const step = Math.max(4, Math.floor(imgData.data.length / 64));
                         for (let i = 0; i < imgData.data.length; i += step) {
-                            const noise = (rng() - 0.5) * 2;
-                            imgData.data[i] = Math.min(255, Math.max(0, imgData.data[i] + Math.round(noise)));
+                            const delta = (rng() > 0.5 ? 1 : -1);
+                            imgData.data[i] = Math.min(255, Math.max(0, imgData.data[i] + delta));
                         }
                     }
                     return imgData;
-                }, 'getImageData');
+                }, 'getImageData', 4);
+
+                if (targetWin.HTMLCanvasElement && targetWin.HTMLCanvasElement.prototype) {
+                    const origToDataURL = targetWin.HTMLCanvasElement.prototype.toDataURL;
+                    targetWin.HTMLCanvasElement.prototype.toDataURL = makeNative(function toDataURL(type, encoderOptions) {
+                        if (this.width > 0 && this.height > 0) {
+                            try {
+                                const ctx2d = this.getContext('2d');
+                                if (ctx2d) {
+                                    const p = origGetImageData.call(ctx2d, 0, 0, 1, 1);
+                                    if (p && p.data && p.data.length >= 4) {
+                                        p.data[0] = (p.data[0] + ((cfg.seed % 3) + 1)) % 256;
+                                        origPutImageData.call(ctx2d, p, 0, 0);
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                        return origToDataURL.apply(this, arguments);
+                    }, 'toDataURL', 0);
+
+                    const origToBlob = targetWin.HTMLCanvasElement.prototype.toBlob;
+                    targetWin.HTMLCanvasElement.prototype.toBlob = makeNative(function toBlob(callback, type, quality) {
+                        if (this.width > 0 && this.height > 0) {
+                            try {
+                                const ctx2d = this.getContext('2d');
+                                if (ctx2d) {
+                                    const p = origGetImageData.call(ctx2d, 0, 0, 1, 1);
+                                    if (p && p.data && p.data.length >= 4) {
+                                        p.data[0] = (p.data[0] + ((cfg.seed % 3) + 1)) % 256;
+                                        origPutImageData.call(ctx2d, p, 0, 0);
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                        return origToBlob.apply(this, arguments);
+                    }, 'toBlob', 1);
+                }
             }
         }
 
-        // 9. Audio Noise Protection
-        if (cfg.audio_noise && targetWin.AudioBuffer) {
-            const origGetChannelData = targetWin.AudioBuffer.prototype.getChannelData;
-            targetWin.AudioBuffer.prototype.getChannelData = makeNative(function getChannelData(channel) {
-                const data = origGetChannelData.apply(this, arguments);
-                if (data && data.length > 0) {
-                    const step = Math.max(1, Math.floor(data.length / 100));
-                    for (let i = 0; i < data.length; i += step) {
-                        data[i] += (rng() - 0.5) * 0.0000001;
+        // 10. Audio Noise Protection
+        if (cfg.audio_noise) {
+            if (targetWin.AudioBuffer && targetWin.AudioBuffer.prototype) {
+                const origGetChannelData = targetWin.AudioBuffer.prototype.getChannelData;
+                targetWin.AudioBuffer.prototype.getChannelData = makeNative(function getChannelData(channel) {
+                    const data = origGetChannelData.apply(this, arguments);
+                    if (data && data.length > 0) {
+                        const step = Math.max(1, Math.floor(data.length / 100));
+                        for (let i = 0; i < data.length; i += step) {
+                            data[i] += (rng() - 0.5) * 0.0000001;
+                        }
                     }
+                    return data;
+                }, 'getChannelData', 1);
+
+                const origCopyFromChannel = targetWin.AudioBuffer.prototype.copyFromChannel;
+                if (origCopyFromChannel) {
+                    targetWin.AudioBuffer.prototype.copyFromChannel = makeNative(function copyFromChannel(destination, channelNumber, startInChannel) {
+                        origCopyFromChannel.apply(this, arguments);
+                        if (destination && destination.length > 0) {
+                            const step = Math.max(1, Math.floor(destination.length / 100));
+                            for (let i = 0; i < destination.length; i += step) {
+                                destination[i] += (rng() - 0.5) * 0.0000001;
+                            }
+                        }
+                    }, 'copyFromChannel', 2);
                 }
-                return data;
-            }, 'getChannelData');
+            }
+
+            if (targetWin.AnalyserNode && targetWin.AnalyserNode.prototype) {
+                const origGetFloatFreq = targetWin.AnalyserNode.prototype.getFloatFrequencyData;
+                if (origGetFloatFreq) {
+                    targetWin.AnalyserNode.prototype.getFloatFrequencyData = makeNative(function getFloatFrequencyData(array) {
+                        origGetFloatFreq.apply(this, arguments);
+                        if (array && array.length > 0) {
+                            for (let i = 0; i < array.length; i += 8) {
+                                array[i] += (rng() - 0.5) * 0.01;
+                            }
+                        }
+                    }, 'getFloatFrequencyData', 1);
+                }
+
+                const origGetByteFreq = targetWin.AnalyserNode.prototype.getByteFrequencyData;
+                if (origGetByteFreq) {
+                    targetWin.AnalyserNode.prototype.getByteFrequencyData = makeNative(function getByteFrequencyData(array) {
+                        origGetByteFreq.apply(this, arguments);
+                        if (array && array.length > 0) {
+                            for (let i = 0; i < array.length; i += 8) {
+                                array[i] = Math.min(255, Math.max(0, array[i] + Math.round((rng() - 0.5) * 2)));
+                            }
+                        }
+                    }, 'getByteFrequencyData', 1);
+                }
+            }
         }
 
-        // 10. Intl Timezone, Locale & Date Spoofing
+        // 11. Intl Timezone, Locale & Date Spoofing
         const targetTz = cfg.timezone || "Europe/Moscow";
+
+        function calcTzOffsetMinutes(date) {
+            try {
+                const d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+                const invDate = new Date(d.toLocaleString('en-US', { timeZone: targetTz }));
+                const diff = (invDate.getTime() - d.getTime());
+                return -Math.round(diff / 60000);
+            } catch(e) {
+                return -180;
+            }
+        }
+
+        function formatTzStrings(date) {
+            try {
+                const d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+                const offsetMin = -calcTzOffsetMinutes(d);
+                const sign = offsetMin >= 0 ? '+' : '-';
+                const absMin = Math.abs(offsetMin);
+                const h = String(Math.floor(absMin / 60)).padStart(2, '0');
+                const m = String(absMin % 60).padStart(2, '0');
+                const gmtStr = `GMT${sign}${h}${m}`;
+
+                const dtFmt = new Intl.DateTimeFormat('en-US', {
+                    timeZone: targetTz,
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                    timeZoneName: 'long'
+                });
+                const dtParts = dtFmt.formatToParts(d);
+                const pMap = {};
+                for (const p of dtParts) pMap[p.type] = p.value;
+                const tzName = pMap.timeZoneName || targetTz;
+
+                const fullStr = `${pMap.weekday} ${pMap.month} ${pMap.day} ${pMap.year} ${pMap.hour}:${pMap.minute}:${pMap.second} ${gmtStr} (${tzName})`;
+                const timeStr = `${pMap.hour}:${pMap.minute}:${pMap.second} ${gmtStr} (${tzName})`;
+                const dateStr = `${pMap.weekday} ${pMap.month} ${pMap.day} ${pMap.year}`;
+                return { fullStr, timeStr, dateStr };
+            } catch(e) {
+                return null;
+            }
+        }
 
         if (targetWin.Intl) {
             if (targetWin.Intl.DateTimeFormat) {
@@ -773,7 +993,7 @@
                 };
                 fakeDTF.prototype = origDTF.prototype;
                 fakeDTF.supportedLocalesOf = origDTF.supportedLocalesOf;
-                makeNative(fakeDTF, 'DateTimeFormat');
+                makeNative(fakeDTF, 'DateTimeFormat', 0);
                 targetWin.Intl.DateTimeFormat = fakeDTF;
 
                 const fakeResolvedOptions = function resolvedOptions() {
@@ -782,7 +1002,7 @@
                     opts.locale = primaryLang;
                     return opts;
                 };
-                makeNative(fakeResolvedOptions, 'resolvedOptions');
+                makeNative(fakeResolvedOptions, 'resolvedOptions', 0);
                 origDTF.prototype.resolvedOptions = fakeResolvedOptions;
             }
 
@@ -793,7 +1013,7 @@
                 };
                 fakeNF.prototype = origNF.prototype;
                 fakeNF.supportedLocalesOf = origNF.supportedLocalesOf;
-                makeNative(fakeNF, 'NumberFormat');
+                makeNative(fakeNF, 'NumberFormat', 0);
                 targetWin.Intl.NumberFormat = fakeNF;
             }
 
@@ -804,7 +1024,7 @@
                 };
                 fakePR.prototype = origPR.prototype;
                 fakePR.supportedLocalesOf = origPR.supportedLocalesOf;
-                makeNative(fakePR, 'PluralRules');
+                makeNative(fakePR, 'PluralRules', 0);
                 targetWin.Intl.PluralRules = fakePR;
             }
 
@@ -815,33 +1035,56 @@
                 };
                 fakeRTF.prototype = origRTF.prototype;
                 fakeRTF.supportedLocalesOf = origRTF.supportedLocalesOf;
-                makeNative(fakeRTF, 'RelativeTimeFormat');
+                makeNative(fakeRTF, 'RelativeTimeFormat', 0);
                 targetWin.Intl.RelativeTimeFormat = fakeRTF;
             }
         }
 
         if (targetWin.Date && targetWin.Date.prototype) {
+            const origGetTimezoneOffset = targetWin.Date.prototype.getTimezoneOffset;
+            const origToString = targetWin.Date.prototype.toString;
+            const origToTimeString = targetWin.Date.prototype.toTimeString;
+            const origToDateString = targetWin.Date.prototype.toDateString;
             const origToLocaleString = targetWin.Date.prototype.toLocaleString;
             const origToLocaleDateString = targetWin.Date.prototype.toLocaleDateString;
             const origToLocaleTimeString = targetWin.Date.prototype.toLocaleTimeString;
+
+            targetWin.Date.prototype.getTimezoneOffset = makeNative(function getTimezoneOffset() {
+                return calcTzOffsetMinutes(this);
+            }, 'getTimezoneOffset', 0);
+
+            targetWin.Date.prototype.toString = makeNative(function toString() {
+                const res = formatTzStrings(this);
+                return res ? res.fullStr : origToString.call(this);
+            }, 'toString', 0);
+
+            targetWin.Date.prototype.toTimeString = makeNative(function toTimeString() {
+                const res = formatTzStrings(this);
+                return res ? res.timeStr : origToTimeString.call(this);
+            }, 'toTimeString', 0);
+
+            targetWin.Date.prototype.toDateString = makeNative(function toDateString() {
+                const res = formatTzStrings(this);
+                return res ? res.dateStr : origToDateString.call(this);
+            }, 'toDateString', 0);
 
             targetWin.Date.prototype.toLocaleString = makeNative(function toLocaleString(locales, options) {
                 const l = locales || primaryLang;
                 const o = Object.assign({ timeZone: targetTz }, options);
                 return origToLocaleString.call(this, l, o);
-            }, 'toLocaleString');
+            }, 'toLocaleString', 0);
 
             targetWin.Date.prototype.toLocaleDateString = makeNative(function toLocaleDateString(locales, options) {
                 const l = locales || primaryLang;
                 const o = Object.assign({ timeZone: targetTz }, options);
                 return origToLocaleDateString.call(this, l, o);
-            }, 'toLocaleDateString');
+            }, 'toLocaleDateString', 0);
 
             targetWin.Date.prototype.toLocaleTimeString = makeNative(function toLocaleTimeString(locales, options) {
                 const l = locales || primaryLang;
                 const o = Object.assign({ timeZone: targetTz }, options);
                 return origToLocaleTimeString.call(this, l, o);
-            }, 'toLocaleTimeString');
+            }, 'toLocaleTimeString', 0);
         }
     }
 
@@ -890,8 +1133,9 @@
                     try { patchWindow(win); } catch(e) {}
                 }
                 return win;
-            }, 'open');
+            }, 'open', 0);
         }
     } catch(e) {}
 
 })();
+
